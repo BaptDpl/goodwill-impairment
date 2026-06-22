@@ -150,7 +150,7 @@
     {slug:"eco",              title:"Eco",                  key:"F", mode:"major",tempo:112,bright:995, dyn:4.7, scene:"kaleido"},
     {slug:"bossanova-sci-fi", title:"Bossanova Sci-Fi",     key:"D", mode:"minor",tempo:129,bright:1602,dyn:13.8,scene:"grid"},
     {slug:"still-not-my-city",title:"Still Not My City",    key:"E", mode:"minor",tempo:112,bright:1425,dyn:11.5,scene:"city"},
-    {slug:"army-of-anubis",   title:"The Army of Anubis",   key:"G", mode:"minor",tempo:96, bright:1311,dyn:7.6, scene:"desert"},
+    {slug:"army-of-anubis",   title:"The Army of Anubis",   key:"G", mode:"minor",tempo:96, bright:1311,dyn:7.6, scene:"aurora"},
     {slug:"beach-break",      title:"Beach Break",          key:"E", mode:"major",tempo:136,bright:1255,dyn:8.7, scene:"waves"},
   ];
   const NOTE={C:0,"C#":1,D:2,"D#":3,E:4,F:5,"F#":6,G:7,"G#":8,A:9,"A#":10,B:11};
@@ -313,46 +313,50 @@
         col+=u_colA*smoothstep(0.45,0.0,r)*(0.3+u_bass*0.6);
         col+=u_treble*0.14*v;
         return col*(0.85+u_level*0.5);}`,
-      // pyramid + all-seeing sun under stars (The Army of Anubis)
-      desert:`vec3 scene(vec2 uv,vec2 p){
-        float t=u_time*0.3; float ar=u_res.x/u_res.y;
-        vec3 col=mix(u_colB*0.9,u_colB*0.22,uv.y);
-        col+=step(0.994,hash(floor(p*150.0)))*smoothstep(0.35,1.0,uv.y)*0.6;
-        vec2 sc=(uv-vec2(0.5,0.66))*vec2(ar,1.0); float sd=length(sc);
-        float ang=atan(sc.y,sc.x);
-        float rays=0.5+0.5*sin(ang*18.0+t*2.0);
-        col+=u_colA*smoothstep(0.55,0.0,sd)*(0.35+rays*0.35)*(0.6+u_bass*0.8);
-        col+=u_colA*smoothstep(0.13,0.09,sd)*(1.2+u_bass*1.4);
-        float apex=0.46; vec2 pc=vec2(uv.x-0.5,uv.y);
-        float w=(apex-uv.y)*0.95;
-        float pyr=step(abs(pc.x),w)*step(uv.y,apex);
-        col=mix(col,u_colB*0.12,pyr);
-        col+=smoothstep(0.012,0.0,abs(abs(pc.x)-w))*step(uv.y,apex)*step(0.05,uv.y)*u_colA*(0.5+u_treble);
-        float sand=smoothstep(0.0,0.10,0.10-uv.y);
-        col=mix(col,u_colB*0.45,sand);
-        return col*(0.9+u_level*0.4);}`,
+      // northern lights / aurora — emerald, teal, gold (The Army of Anubis)
+      aurora:`vec3 scene(vec2 uv,vec2 p){
+        float t=u_time*0.35;
+        vec3 col=mix(vec3(0.02,0.04,0.07),vec3(0.05,0.09,0.12),uv.y);
+        vec3 g1=vec3(0.15,0.95,0.55); vec3 g2=vec3(0.10,0.75,0.85); vec3 g3=vec3(0.95,0.78,0.30);
+        float glow=0.0;
+        for(int i=0;i<4;i++){ float fi=float(i);
+          float off=fbm(vec2(uv.x*1.5+fi*3.1, t+fi))*0.4;
+          float center=0.32+0.12*fi+off;
+          float band=exp(-pow((uv.y-center)/(0.15+0.04*fi),2.0));
+          float flick=0.6+0.4*sin(uv.x*16.0+fi*2.0+t*2.0+u_bass*3.0);
+          vec3 cc=mix(g1,g2,fract(fi*0.5+0.2)); cc=mix(cc,g3,smoothstep(0.2,0.75,uv.y));
+          col+=band*flick*(0.45+u_level*0.8+u_bass*0.4)*cc;
+          glow+=band*0.2;
+        }
+        col+=mix(g2,g1,0.5)*smoothstep(0.35,0.0,uv.y)*0.12;
+        col+=u_treble*0.12*vec3(0.7,1.0,0.85)*glow;
+        return col*(0.95+u_level*0.4);}`,
       // sun glitter on a perspective sea (Beach Break)
       waves:`vec3 scene(vec2 uv,vec2 p){
-        float t=u_time; float ar=u_res.x/u_res.y; float hz=0.55;
+        float t=u_time; float ar=u_res.x/u_res.y; float hz=0.52;
+        vec3 skyTop=vec3(0.12,0.18,0.42), skyMid=vec3(0.95,0.45,0.42), skyLow=vec3(1.0,0.82,0.45);
+        vec3 seaDeep=vec3(0.03,0.10,0.20), seaTeal=vec3(0.10,0.42,0.50), gold=vec3(1.0,0.85,0.5);
         vec3 col;
+        float haze=exp(-abs(uv.y-hz)*9.0);
         if(uv.y>hz){
-          float sky=(uv.y-hz)/(1.0-hz);
-          col=mix(u_colA,u_colB,sky*0.85);
-          float sun=smoothstep(0.13,0.0,length((uv-vec2(0.5,hz+0.13))*vec2(ar,1.0)));
-          col=mix(col,u_colA*1.5,sun*(0.8+u_bass*0.6));
-          col+=fbm(vec2(uv.x*3.0+t*0.05,uv.y*3.0))*0.05*u_colA;
+          float s=(uv.y-hz)/(1.0-hz);
+          col=mix(mix(skyLow,skyMid,smoothstep(0.0,0.5,s)),skyTop,smoothstep(0.3,1.0,s));
+          float sun=smoothstep(0.16,0.0,length((uv-vec2(0.5,hz+0.10))*vec2(ar,1.0)));
+          col=mix(col,vec3(1.0,0.95,0.8),sun*(0.85+u_bass*0.5));
+          col+=fbm(vec2(uv.x*3.0+t*0.05,uv.y*3.0))*0.04*skyMid;
         } else {
-          col=mix(u_colA*0.7,u_colB,(hz-uv.y)/hz);
           float d=hz-uv.y;
-          float spread=0.02+d*0.5;
+          col=mix(seaTeal,seaDeep,d/hz);
+          float spread=0.02+d*0.55;
           float colmn=smoothstep(spread,0.0,abs(uv.x-0.5));
           float sh=(0.5+0.5*sin(uv.x*40.0+sin(d*26.0-t*2.0)*2.0-t*3.0));
           sh*=(0.5+0.5*sin(uv.x*23.0-d*16.0+t*2.5));
-          col+=pow(sh,2.0)*colmn*(0.5+u_treble*1.0)*u_colA*1.3;
+          col=mix(col,gold,pow(sh,2.0)*colmn*(0.6+u_treble*1.0));
           float ripple=pow(0.5+0.5*sin(d*55.0-t*4.0),2.0);
-          col+=ripple*colmn*0.3*u_colA;
+          col+=ripple*colmn*0.25*gold;
         }
-        return col*(0.9+u_level*0.4);}`,
+        col+=haze*gold*0.35;
+        return col*(0.92+u_level*0.4);}`,
     };
     const geo=new THREE.PlaneGeometry(2,2);
     function makeLayer(){const u=mkU();
