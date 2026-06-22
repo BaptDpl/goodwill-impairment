@@ -67,13 +67,28 @@
   .links{display:flex;gap:16px;flex-wrap:wrap;margin-top:18px;}
   .links a{color:var(--ink);text-decoration:none;font-size:11px;letter-spacing:.08em;text-transform:lowercase;opacity:.5;transition:opacity .3s;}
   .links a:hover{opacity:1;}
+  .copyright{margin-top:14px;font-size:10px;letter-spacing:.04em;line-height:1.5;color:rgba(253,238,221,.35);}
+  .copyright a{color:rgba(253,238,221,.5);text-decoration:underline;text-underline-offset:2px;}
+  .copyright a:hover{color:#fff6ea;}
+
+  /* legal modal */
+  .modal{position:fixed;inset:0;z-index:200;display:none;align-items:center;justify-content:center;padding:24px;
+    background:rgba(10,7,12,.7);backdrop-filter:blur(6px);}
+  .modal.open{display:flex;}
+  .modal .box{max-width:560px;max-height:80vh;overflow-y:auto;padding:32px 34px;border-radius:16px;
+    background:#1b141f;border:1px solid rgba(253,238,221,.14);color:rgba(253,238,221,.8);}
+  .modal .box h3{font-weight:300;font-size:22px;color:#fff6ea;margin-bottom:18px;}
+  .modal .box p{font-size:13px;line-height:1.7;margin-bottom:12px;}
+  .modal .box a{color:#f0b15f;}
+  .modal .box button{margin-top:10px;padding:10px 22px;border-radius:100px;cursor:pointer;
+    background:#fff6ea;color:#15101a;border:none;font-size:13px;letter-spacing:.04em;}
 
   /* song title in the centre of the stage */
   .nowtitle{position:fixed;top:0;left:var(--side);right:0;bottom:0;z-index:10;
     display:flex;align-items:center;justify-content:center;text-align:center;padding:0 5vw;pointer-events:none;}
   .nowtitle span{font-family:'Fraunces';font-weight:200;font-style:italic;color:#fdf3e6;
     font-size:clamp(32px,6vw,104px);line-height:1.02;letter-spacing:-0.01em;
-    mix-blend-mode:overlay;opacity:1;transition:opacity .6s ease;}
+    mix-blend-mode:overlay;opacity:0.5;transition:opacity .6s ease;}
 
   @media(max-width:680px){
     :root{--side:100%;}
@@ -103,8 +118,21 @@
     <div class="links">
       <a href="#">spotify</a><a href="#">apple</a><a href="#">bandcamp</a><a href="#">instagram</a>
     </div>
+    <div class="copyright">© Goodwill Impairment 2026 · tous droits réservés · <a href="#" id="termsLink">mentions légales</a></div>
   </div>
 </aside>
+
+<div class="modal" id="terms">
+  <div class="box">
+    <h3 class="display">Mentions légales &amp; conditions d'utilisation</h3>
+    <p>© Goodwill Impairment 2026. Tous droits réservés.</p>
+    <p>L'ensemble des œuvres musicales, enregistrements sonores, compositions, paroles, visuels et contenus présents sur ce site sont la propriété exclusive de Goodwill Impairment et sont protégés par le droit d'auteur et les droits voisins.</p>
+    <p>Les morceaux sont mis à disposition en écoute en continu (streaming) à des fins strictement personnelles et privées. Toute reproduction, téléchargement, enregistrement, extraction, copie, diffusion publique, communication au public, mise à disposition, modification, adaptation ou réutilisation, totale ou partielle, par quelque procédé que ce soit, est strictement interdite sans l'autorisation écrite préalable de Goodwill Impairment.</p>
+    <p>Toute utilisation non autorisée est susceptible de constituer une contrefaçon engageant la responsabilité civile et pénale de son auteur.</p>
+    <p>Contact : <a href="mailto:duplanbaptiste@gmail.com">duplanbaptiste@gmail.com</a></p>
+    <button id="termsClose">Fermer</button>
+  </div>
+</div>
 
 <script src="three.min.js"></script>
 <script>
@@ -114,7 +142,7 @@
   // ---------- the catalogue + fingerprints + per-song scene ----------
   const TRACKS=[
     {slug:"losing-control",   title:"Losing Control",       key:"G#",mode:"minor",tempo:96, bright:1430,dyn:16.4,scene:"storm"},
-    {slug:"white-stairs",     title:"White Stairs",         key:"E", mode:"minor",tempo:152,bright:1167,dyn:10.7,scene:"bars"},
+    {slug:"white-stairs",     title:"White Stairs",         key:"E", mode:"minor",tempo:152,bright:1167,dyn:10.7,scene:"stairs"},
     {slug:"our-song",         title:"Our Song",             key:"E", mode:"major",tempo:99, bright:1048,dyn:5.0, scene:"bokeh"},
     {slug:"always",           title:"Always",               key:"F", mode:"major",tempo:152,bright:716, dyn:10.6,scene:"haze"},
     {slug:"first-time-matters",title:"The First Time Matters",key:"G#",mode:"minor",tempo:89,bright:924,dyn:8.0, scene:"ripple"},
@@ -209,17 +237,21 @@
           col+=smoothstep(r,0.0,d)*(0.22+u_bass*0.45)*mix(u_colA,vec3(1.0,0.95,0.85),sd*0.5);
         }
         return col*(0.85+u_level*0.4);}`,
-      // ascending bars of light (White Stairs)
-      bars:`vec3 scene(vec2 uv,vec2 p){
-        float t=u_time; float n=18.0; float idx=floor(uv.x*n); float ph=h1(idx*1.3);
-        float hgt=clamp(0.2+0.55*ph+0.28*sin(t*2.0+idx*0.6)+u_level*0.5+u_bass*0.4*sin(idx),0.05,0.97);
-        float gx=abs(fract(uv.x*n)-0.5); float gap=smoothstep(0.40,0.5,gx);
-        float bar=step(uv.y,hgt);
-        vec3 col=u_colB*0.3;
-        vec3 bc=mix(u_colA,u_colB,uv.y/max(hgt,0.001));
-        col=mix(col,bc,bar*(1.0-gap));
-        col+=smoothstep(0.025,0.0,abs(uv.y-hgt))*(1.0-gap)*(0.6+u_treble*1.6)*u_colA;
-        return col*(0.8+u_level*0.5);}`,
+      // ascending staircase into the light (White Stairs)
+      stairs:`vec3 scene(vec2 uv,vec2 p){
+        float t=u_time;
+        float depth=1.0/(1.04-uv.y);
+        float climb=depth*1.3 - t*1.3 - u_level*2.0;
+        float stp=fract(climb); float id=floor(climb);
+        float fog=smoothstep(1.0,0.15,uv.y);
+        float face=smoothstep(0.5,0.54,stp);
+        vec3 col=mix(u_colB*0.7, mix(u_colB,u_colA,0.6), face)*fog;
+        float edge=smoothstep(0.05,0.0,min(stp,1.0-stp));
+        col+=u_colA*edge*(0.5+u_treble*1.2)*fog;
+        col*=0.6+0.4*sin(id*0.6 - t*3.0 - u_bass*3.0);
+        col+=u_colA*smoothstep(0.86,1.0,uv.y)*(0.5+u_bass*0.8);
+        col*=smoothstep(0.52,0.12,abs(uv.x-0.5));
+        return col*(0.85+u_level*0.5);}`,
       // warm heat-haze bands (Always)
       haze:`vec3 scene(vec2 uv,vec2 p){
         float t=u_time;
@@ -266,25 +298,29 @@
         col+=u_treble*0.2*smoothstep(0.7,0.9,pat);
         col*=smoothstep(0.98,0.15,r);
         return col*(0.85+u_level*0.5);}`,
-      // rainy neon skyline, parallax layers (Still Not My City)
+      // rainy neon skyline reflected in a wet street (Still Not My City)
       city:`vec3 scene(vec2 uv,vec2 p){
-        float t=u_time;
-        vec3 col=mix(u_colB*1.5,u_colB*0.22,uv.y);
-        col+=step(0.996,hash(floor(p*180.0)))*smoothstep(0.45,1.0,uv.y)*0.6;
+        float t=u_time; float hz=0.34;
+        float yy = uv.y<hz ? (hz+(hz-uv.y)) : uv.y;   // mirror into the street
+        vec3 col=mix(u_colB*1.5,u_colB*0.22,yy);
+        col+=step(0.996,hash(floor(vec2(uv.x,yy)*170.0)))*smoothstep(0.55,1.0,yy)*0.6;
         for(int Lr=0;Lr<3;Lr++){ float fl=float(Lr);
           float scale=7.0+fl*6.0;
           float xx=uv.x*scale + t*(0.02+fl*0.04);
           float ci=floor(xx);
-          float bh=(0.16+0.26*h1(ci*1.7+fl*11.0))*(0.7+fl*0.30);
-          if(uv.y<bh){
+          float bh=hz+(0.14+0.26*h1(ci*1.7+fl*11.0))*(0.7+fl*0.30);
+          if(yy>hz && yy<bh){
             col=u_colB*(0.30-fl*0.08);
-            vec2 w=floor(vec2(xx*4.0,uv.y*42.0));
+            vec2 w=floor(vec2(xx*4.0,(yy-hz)*42.0));
             float lit=step(0.64,h1(w.x*3.1+w.y*7.3+fl*9.0));
             float flick=lit*(0.5+0.5*sin(t*2.0+w.x*1.3+w.y+u_bass*4.0));
-            float win=step(0.25,fract(xx*4.0))*step(fract(xx*4.0),0.75)*step(0.2,fract(uv.y*42.0))*step(fract(uv.y*42.0),0.8);
+            float win=step(0.25,fract(xx*4.0))*step(fract(xx*4.0),0.75)*step(0.2,fract((yy-hz)*42.0))*step(fract((yy-hz)*42.0),0.8);
             col+=u_colA*flick*win*(0.8+u_treble)*(1.0-fl*0.2);
           }
         }
+        if(uv.y<hz){ float ripple=0.6+0.4*sin((hz-uv.y)*40.0+sin(uv.x*18.0+t)*1.5+t*2.0);
+          col*=0.4*ripple+0.1; col+=u_colA*0.03; }
+        col=mix(col,u_colB*0.7,exp(-abs(uv.y-hz)*12.0)*0.5);
         float rain=smoothstep(0.55,1.0,hash(vec2(floor(p.x*110.0),floor(p.y*7.0 - t*6.0))));
         col+=rain*u_treble*0.12;
         return col*(0.9+u_level*0.4);}`,
@@ -306,23 +342,27 @@
         float sand=smoothstep(0.0,0.10,0.10-uv.y);
         col=mix(col,u_colB*0.45,sand);
         return col*(0.9+u_level*0.4);}`,
-      // sun glittering on the sea (Beach Break)
+      // sun glitter on a perspective sea (Beach Break)
       waves:`vec3 scene(vec2 uv,vec2 p){
         float t=u_time; float ar=u_res.x/u_res.y; float hz=0.55;
         vec3 col;
         if(uv.y>hz){
           float sky=(uv.y-hz)/(1.0-hz);
-          col=mix(u_colA,u_colB,sky*0.8);
-          float sun=smoothstep(0.12,0.0,length((uv-vec2(0.5,hz+0.12))*vec2(ar,1.0)));
-          col=mix(col,u_colA*1.4,sun*(0.8+u_bass*0.6));
+          col=mix(u_colA,u_colB,sky*0.85);
+          float sun=smoothstep(0.13,0.0,length((uv-vec2(0.5,hz+0.13))*vec2(ar,1.0)));
+          col=mix(col,u_colA*1.5,sun*(0.8+u_bass*0.6));
+          col+=fbm(vec2(uv.x*3.0+t*0.05,uv.y*3.0))*0.05*u_colA;
         } else {
-          float sea=(hz-uv.y)/hz;
-          col=mix(u_colA*0.7,u_colB,sea);
-          float spread=0.03+(hz-uv.y)*0.45;
+          float depth=1.0/(hz-uv.y+0.02);
+          col=mix(u_colA*0.7,u_colB,(hz-uv.y)/hz);
+          float lines=sin(depth*3.0 - t*3.0);
+          col+=smoothstep(0.6,1.0,lines)*0.08*u_colA;
+          float spread=0.02+(hz-uv.y)*0.5;
           float colmn=smoothstep(spread,0.0,abs(uv.x-0.5));
-          float ripple=sin(uv.y*60.0-t*4.0)*0.5+0.5;
-          col+=smoothstep(0.5,1.0,ripple)*colmn*(0.5+u_treble*1.2)*u_colA;
-          col+=fbm(vec2(uv.x*6.0,(hz-uv.y)*20.0+t))*0.08*u_colA;
+          float sparkle=step(0.85,hash(vec2(floor(uv.x*120.0),floor(depth*6.0 - t*4.0))));
+          col+=sparkle*colmn*(0.6+u_treble*1.5)*u_colA*1.4;
+          float ripple=pow(0.5+0.5*sin(uv.y*70.0-t*4.0),3.0);
+          col+=ripple*colmn*0.4*u_colA;
         }
         return col*(0.9+u_level*0.4);}`,
     };
@@ -397,7 +437,7 @@
     row.innerHTML=`<span class="n display">${String(i+1).padStart(2,'0')}</span>`+
       `<span class="ttl">${tr.title}</span>`+
       `<span class="eq"><i></i><i></i><i></i></span>`;
-    row.onclick=()=>{ if(i===idx&&playing){pause();} else if(i===idx){play();} else {load(i);play();} };
+    row.onclick=()=>{ if(i===idx&&playing){pause();} else if(i===idx){play();} else {load(i,true);} };
     songsEl.appendChild(row); tr._row=row;
   });
 
@@ -422,12 +462,19 @@
     if(!('mediaSession'in navigator))return;
     try{ navigator.mediaSession.metadata=new MediaMetadata({title:tr.title,artist:'Goodwill Impairment',album:'Goodwill Impairment',artwork:[{src:songArt(tr),sizes:'512x512',type:'image/png'}]}); }catch(e){}
   }
-  function load(i){
+  // stream tracks as blobs so no direct .mp3 link sits in the player/DOM
+  let curURL=null, reqId=0;
+  function setSource(tr, autoplay){
+    const my=++reqId; cur.textContent='0:00'; fill.style.width='0%'; tot.textContent='–:–';
+    fetch(encodeURI('audio/'+tr.slug+'.mp3')).then(r=>{if(!r.ok)throw 0;return r.blob();})
+      .then(b=>{ if(my!==reqId)return; if(curURL)URL.revokeObjectURL(curURL); curURL=URL.createObjectURL(b); audio.src=curURL; if(autoplay)play(); })
+      .catch(()=>{ if(my!==reqId)return; audio.src=encodeURI('audio/'+tr.slug+'.mp3'); if(autoplay)play(); }); // file:// fallback
+  }
+  function load(i, autoplay){
     idx=(i+TRACKS.length)%TRACKS.length; const tr=TRACKS[idx];
     TRACKS.forEach(x=>x._row.classList.remove('active')); tr._row.classList.add('active');
     tnow.textContent=tr.title; nowtitle.textContent=tr.title;
-    stageShow(tr); media(tr);
-    audio.src=encodeURI('audio/'+tr.slug+'.mp3'); cur.textContent='0:00'; fill.style.width='0%'; tot.textContent='–:–';
+    stageShow(tr); media(tr); setSource(tr, autoplay);
   }
   // Web Audio mutes file:// media; only enable analyser over http(s).
   let actx=null;
@@ -443,7 +490,7 @@
   function play(){ initAudio(); if(actx&&actx.state==='suspended')actx.resume();
     audio.play().then(()=>{playing=true;pp.textContent='⏸';document.body.classList.remove('paused');if(ms)ms.playbackState='playing';}).catch(()=>{}); }
   function pause(){ audio.pause(); playing=false; pp.textContent='▶'; document.body.classList.add('paused'); if(ms)ms.playbackState='paused'; }
-  function next(){ load(idx+1); play(); } function prev(){ load(idx-1); play(); }
+  function next(){ load(idx+1,true); } function prev(){ load(idx-1,true); }
   if(ms){ ms.setActionHandler('play',play); ms.setActionHandler('pause',pause);
     ms.setActionHandler('previoustrack',prev); ms.setActionHandler('nexttrack',next); }
 
@@ -453,7 +500,14 @@
   pp.onclick=()=>playing?pause():play();
   document.getElementById('next').onclick=next; document.getElementById('prev').onclick=prev;
   document.getElementById('prog').onclick=e=>{if(!audio.duration)return;const r=e.currentTarget.getBoundingClientRect();audio.currentTime=(e.clientX-r.left)/r.width*audio.duration;};
-  load(0);
+  load(0,false);
+
+  // legal modal + light right-click deterrent on media
+  const _t=document.getElementById('terms');
+  document.getElementById('termsLink').onclick=e=>{e.preventDefault();_t.classList.add('open');};
+  document.getElementById('termsClose').onclick=()=>_t.classList.remove('open');
+  _t.onclick=e=>{if(e.target===_t)_t.classList.remove('open');};
+  document.addEventListener('contextmenu',e=>e.preventDefault());
 </script>
 </body>
 </html>
