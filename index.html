@@ -68,24 +68,32 @@
   .links a{color:var(--ink);text-decoration:none;font-size:11px;letter-spacing:.08em;text-transform:lowercase;opacity:.5;transition:opacity .3s;}
   .links a:hover{opacity:1;}
 
+  /* song title in the centre of the stage */
+  .nowtitle{position:fixed;top:0;left:var(--side);right:0;bottom:0;z-index:10;
+    display:flex;align-items:center;justify-content:center;text-align:center;padding:0 5vw;pointer-events:none;}
+  .nowtitle span{font-family:'Fraunces';font-weight:200;font-style:italic;color:#fdf3e6;
+    font-size:clamp(32px,6vw,104px);line-height:1.02;letter-spacing:-0.01em;
+    mix-blend-mode:overlay;opacity:1;transition:opacity .6s ease;}
+
   @media(max-width:680px){
     :root{--side:100%;}
     body{overflow:auto;}
     .sidebar{position:relative;height:auto;min-height:100vh;background:linear-gradient(180deg,rgba(15,11,18,.5),rgba(15,11,18,.8));}
     #stage,.stage-fallback{height:60vh;}
+    .nowtitle{left:0;bottom:auto;height:60vh;}
   }
 </style>
 </head>
 <body class="paused">
 
 <canvas id="stage"></canvas>
+<div class="nowtitle" id="nowt"><span id="nowtitle"></span></div>
 
 <aside class="sidebar">
   <div class="brand">Goodwill<b>Impairment</b><small>a record in motion</small></div>
   <nav class="songs" id="songs"></nav>
   <div class="transport">
     <div class="tnow" id="tnow">—</div>
-    <div class="tsub" id="tsub">select a song</div>
     <div class="controls">
       <button id="prev" title="Previous">⏮</button>
       <button class="pp" id="pp" title="Play">▶</button>
@@ -108,14 +116,14 @@
     {slug:"losing-control",   title:"Losing Control",       key:"G#",mode:"minor",tempo:96, bright:1430,dyn:16.4,scene:"storm"},
     {slug:"white-stairs",     title:"White Stairs",         key:"E", mode:"minor",tempo:152,bright:1167,dyn:10.7,scene:"bars"},
     {slug:"our-song",         title:"Our Song",             key:"E", mode:"major",tempo:99, bright:1048,dyn:5.0, scene:"bokeh"},
-    {slug:"always",           title:"Always",               key:"F", mode:"major",tempo:152,bright:716, dyn:10.6,scene:"default"},
-    {slug:"first-time-matters",title:"The First Time Matters",key:"G#",mode:"minor",tempo:89,bright:924,dyn:8.0, scene:"default"},
-    {slug:"avril-lafish",     title:"Avril Lafish",         key:"G", mode:"major",tempo:152,bright:1241,dyn:5.8, scene:"default"},
-    {slug:"eco",              title:"Eco",                  key:"F", mode:"major",tempo:112,bright:995, dyn:4.7, scene:"default"},
+    {slug:"always",           title:"Always",               key:"F", mode:"major",tempo:152,bright:716, dyn:10.6,scene:"haze"},
+    {slug:"first-time-matters",title:"The First Time Matters",key:"G#",mode:"minor",tempo:89,bright:924,dyn:8.0, scene:"ripple"},
+    {slug:"avril-lafish",     title:"Avril Lafish",         key:"G", mode:"major",tempo:152,bright:1241,dyn:5.8, scene:"caustics"},
+    {slug:"eco",              title:"Eco",                  key:"F", mode:"major",tempo:112,bright:995, dyn:4.7, scene:"kaleido"},
     {slug:"bossanova-sci-fi", title:"Bossanova Sci-Fi",     key:"D", mode:"minor",tempo:129,bright:1602,dyn:13.8,scene:"grid"},
-    {slug:"still-not-my-city",title:"Still Not My City",    key:"E", mode:"minor",tempo:112,bright:1425,dyn:11.5,scene:"default"},
-    {slug:"army-of-anubis",   title:"The Army of Anubis",   key:"G", mode:"minor",tempo:96, bright:1311,dyn:7.6, scene:"default"},
-    {slug:"beach-break",      title:"Beach Break",          key:"E", mode:"major",tempo:136,bright:1255,dyn:8.7, scene:"default"},
+    {slug:"still-not-my-city",title:"Still Not My City",    key:"E", mode:"minor",tempo:112,bright:1425,dyn:11.5,scene:"city"},
+    {slug:"army-of-anubis",   title:"The Army of Anubis",   key:"G", mode:"minor",tempo:96, bright:1311,dyn:7.6, scene:"desert"},
+    {slug:"beach-break",      title:"Beach Break",          key:"E", mode:"major",tempo:136,bright:1255,dyn:8.7, scene:"waves"},
   ];
   const NOTE={C:0,"C#":1,D:2,"D#":3,E:4,F:5,"F#":6,G:7,"G#":8,A:9,"A#":10,B:11};
   const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
@@ -212,6 +220,92 @@
         col=mix(col,bc,bar*(1.0-gap));
         col+=smoothstep(0.025,0.0,abs(uv.y-hgt))*(1.0-gap)*(0.6+u_treble*1.6)*u_colA;
         return col*(0.8+u_level*0.5);}`,
+      // warm heat-haze bands (Always)
+      haze:`vec3 scene(vec2 uv,vec2 p){
+        float t=u_time;
+        float warp=fbm(vec2(uv.x*2.0,t*0.3))*0.15*(1.0+u_level);
+        float band=sin((uv.y+warp)*10.0+t*1.5+u_bass*3.0);
+        float m=smoothstep(-0.2,1.0,band);
+        vec3 col=mix(u_colB,u_colA,m*0.7+0.3*fbm(p*2.0+t*0.2));
+        col+=u_treble*0.15*smoothstep(0.85,1.0,band);
+        return col*(0.85+u_level*0.5);}`,
+      // slow concentric ripples (The First Time Matters)
+      ripple:`vec3 scene(vec2 uv,vec2 p){
+        float t=u_time;
+        vec2 c=(uv-0.5)*vec2(u_res.x/u_res.y,1.0);
+        float d=length(c);
+        float rings=sin(d*40.0-t*3.0-u_bass*6.0);
+        float m=smoothstep(0.0,0.6,rings)*(1.0-d);
+        vec3 col=mix(u_colB,u_colA,m*0.8+0.2);
+        col+=u_treble*0.2*smoothstep(0.9,1.0,rings)*(1.0-d);
+        col+=u_colA*smoothstep(0.3,0.0,d)*(0.2+u_level*0.4);
+        return col*(0.8+u_level*0.4);}`,
+      // underwater caustics (Avril Lafish)
+      caustics:`vec3 scene(vec2 uv,vec2 p){
+        float t=u_time*0.6; vec2 q=p*3.0; float c=0.0;
+        for(int i=0;i<3;i++){
+          vec2 o=vec2(fbm(q+t+float(i)),fbm(q.yx-t));
+          c+=abs(sin((q.x+o.x*2.0)*3.0)+cos((q.y+o.y*2.0)*3.0));
+          q*=1.3;
+        }
+        c=pow(c*0.33,2.0);
+        float caust=smoothstep(0.4,1.2,c)*(1.0+u_bass*1.5);
+        vec3 col=mix(u_colB,u_colA,caust);
+        col+=caust*u_treble*0.3;
+        return col*(0.8+u_level*0.5);}`,
+      // kaleidoscope mandala (Eco)
+      kaleido:`vec3 scene(vec2 uv,vec2 p){
+        float t=u_time*0.4;
+        vec2 c=(uv-0.5)*vec2(u_res.x/u_res.y,1.0);
+        float a=atan(c.y,c.x), r=length(c);
+        float seg=6.0;
+        a=mod(a,6.28318/seg); a=abs(a-3.14159/seg);
+        vec2 k=vec2(cos(a),sin(a))*r;
+        float pat=fbm(k*5.0+vec2(t,-t))+sin(r*16.0-t*2.0-u_bass*4.0)*0.3;
+        vec3 col=mix(u_colB,u_colA,smoothstep(0.2,0.9,pat));
+        col+=u_treble*0.2*smoothstep(0.7,0.9,pat);
+        col*=smoothstep(0.98,0.15,r);
+        return col*(0.85+u_level*0.5);}`,
+      // neon city skyline (Still Not My City)
+      city:`vec3 scene(vec2 uv,vec2 p){
+        float t=u_time;
+        float ci=floor(uv.x*14.0);
+        float bh=0.25+0.5*h1(ci*1.7);
+        vec3 col=mix(u_colB*1.3,u_colB*0.35,uv.y);
+        if(uv.y<bh){
+          vec2 w=floor(vec2(uv.x*14.0,uv.y*40.0));
+          float lit=step(0.6,h1(w.x*3.1+w.y*7.3));
+          float flick=lit*(0.6+0.4*sin(t*3.0+w.y+w.x+u_bass*5.0));
+          float win=step(0.2,fract(uv.x*14.0))*step(fract(uv.x*14.0),0.8)*step(0.2,fract(uv.y*40.0))*step(fract(uv.y*40.0),0.8);
+          col=u_colB*0.15;
+          col+=u_colA*flick*win*(0.8+u_treble*1.2);
+        }
+        return col*(0.85+u_level*0.4);}`,
+      // desert dunes + sun (The Army of Anubis)
+      desert:`vec3 scene(vec2 uv,vec2 p){
+        float t=u_time*0.2;
+        vec3 col=mix(u_colB*1.3,u_colB*0.5,uv.y);
+        float sun=smoothstep(0.16,0.0,length((uv-vec2(0.5,0.64))*vec2(1.0,1.25)));
+        col=mix(col,u_colA,sun*(0.85+u_bass*0.6));
+        for(int i=0;i<4;i++){ float fi=float(i);
+          float dune=0.46-fi*0.10+0.045*sin(uv.x*(2.5+fi)+fi*1.7+t)+0.025*fbm(vec2(uv.x*5.0,fi*3.0));
+          float m=step(uv.y,dune);
+          col=mix(col,u_colB*(0.55-fi*0.11),m);
+        }
+        col+=u_treble*0.1*sun;
+        return col*(0.85+u_level*0.4);}`,
+      // rolling ocean waves (Beach Break)
+      waves:`vec3 scene(vec2 uv,vec2 p){
+        float t=u_time*0.5;
+        vec3 col=mix(u_colA*0.8,u_colB,uv.y);
+        for(int i=0;i<6;i++){ float fi=float(i);
+          float wave=0.72-fi*0.12+0.03*sin(uv.x*6.0+t*(1.0+fi*0.2)+fi)+0.02*fbm(vec2(uv.x*8.0+t,fi));
+          float m=step(uv.y,wave);
+          float foam=smoothstep(0.012,0.0,abs(uv.y-wave));
+          col=mix(col,mix(u_colB,u_colA,fi/6.0),m);
+          col+=foam*(0.5+u_treble*1.2)*mix(u_colA,vec3(1.0),0.4);
+        }
+        return col*(0.85+u_level*0.5);}`,
     };
     const matCache={};
     function mat(name){ name=SCENES[name]?name:'default';
@@ -261,7 +355,8 @@
   const audio=new Audio(); audio.preload='metadata';
   let idx=0, playing=false;
   const songsEl=document.getElementById('songs');
-  const tnow=document.getElementById('tnow'),tsub=document.getElementById('tsub');
+  const tnow=document.getElementById('tnow');
+  const nowt=document.getElementById('nowt'),nowtitle=document.getElementById('nowtitle');
   const fill=document.getElementById('fill'),cur=document.getElementById('cur'),tot=document.getElementById('tot'),pp=document.getElementById('pp');
   const fmt=s=>(isFinite(s)?Math.floor(s/60)+':'+String(Math.floor(s%60)).padStart(2,'0'):'–:–');
 
@@ -277,7 +372,7 @@
   function load(i){
     idx=(i+TRACKS.length)%TRACKS.length; const tr=TRACKS[idx];
     TRACKS.forEach(x=>x._row.classList.remove('active')); tr._row.classList.add('active');
-    tnow.textContent=tr.title; tsub.textContent=tr.key+' '+tr.mode+' · '+tr.tempo+' bpm';
+    tnow.textContent=tr.title; nowtitle.textContent=tr.title;
     paletteFor(tr); setScene(tr.scene);
     audio.src=encodeURI('audio/'+tr.slug+'.mp3'); cur.textContent='0:00'; fill.style.width='0%'; tot.textContent='–:–';
   }
