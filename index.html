@@ -155,10 +155,10 @@
       float fbm(vec2 p){float v=0.,a=.5;for(int i=0;i<6;i++){v+=a*noise(p);p*=2.02;a*=.5;}return v;}
       mat2 rot(float a){float c=cos(a),s=sin(a);return mat2(c,-s,s,c);}`;
     const MAIN=`void main(){vec2 uv=vUv;
-      uv=(uv-0.5)*(1.0-u_punch*0.10)+0.5;
+      uv=(uv-0.5)*(1.0-u_punch*0.045)+0.5;
       vec2 p=uv;p.x*=u_res.x/u_res.y;
       vec3 col=scene(uv,p);
-      col*=1.0+u_punch*0.22;
+      col*=1.0+u_punch*0.10;
       vec2 cc=uv-0.5; col*=1.0-dot(cc,cc)*(0.92-u_bass*0.32);
       col=max(col,0.0); gl_FragColor=vec4(col,u_alpha);}`;
 
@@ -182,26 +182,20 @@
         vec3 col=mix(u_colB*0.55,u_colA,smoothstep(0.18,0.92,f));
         col+=streak*(1.2+u_bass*3.2)*mix(u_colA,vec3(1.0),0.55);
         return col*(0.62+u_level*0.9);}`,
-      // synthwave grid + sun (Bossanova Sci-Fi)
+      // neon hyperspace tunnel (Bossanova Sci-Fi)
       grid:`vec3 scene(vec2 uv,vec2 p){
-        float t=u_time*0.7+u_level*1.5; vec3 col;
-        if(uv.y<0.5){
-          float z=1.0/(0.5-uv.y+0.02);
-          vec2 g=vec2((uv.x-0.5)*z, z - t*3.0);
-          vec2 gl=abs(fract(g*vec2(3.0,1.0))-0.5);
-          float line=min(gl.x,gl.y);
-          float glow=smoothstep(0.07,0.0,line)*(0.5+u_bass*1.8);
-          col=mix(u_colB*0.22,u_colA,glow);
-          col*=clamp(z*0.05,0.0,1.0)+0.12;
-        } else {
-          float sky=(uv.y-0.5)*2.0;
-          col=mix(u_colA*0.5,u_colB,sky);
-          float sun=smoothstep(0.30,0.0,length((uv-vec2(0.5,0.60))*vec2(1.0,1.4)));
-          float bands=smoothstep(0.4,0.6,fract(uv.y*28.0 - t*0.5));
-          col=mix(col,u_colA,sun*bands);
-          col+=u_treble*0.12*sun;
-        }
-        return col*(0.8+u_level*0.6);}`,
+        vec2 c=(uv-0.5)*vec2(u_res.x/u_res.y,1.0);
+        float a=atan(c.y,c.x);
+        float r=length(c)+0.0001;
+        float speed=0.5+u_level*1.4;
+        float depth=1.0/r + u_time*speed;
+        float rings=abs(fract(depth*1.4)-0.5);
+        float spokes=abs(fract(a/6.28318*18.0)-0.5);
+        float grid=smoothstep(0.05,0.0,min(rings*0.8,spokes));
+        vec3 col=mix(u_colB*0.12,u_colA,grid*(0.7+u_bass*1.4));
+        col+=u_colA*pow(1.0-min(r*1.5,1.0),3.0)*(0.5+u_bass*1.2);
+        col+=u_treble*0.25*smoothstep(0.47,0.5,abs(fract(a/6.28318*40.0)-0.5))*smoothstep(0.05,0.5,r);
+        return col*(0.9+u_level*0.5);}`,
       // soft drifting bokeh (Our Song)
       bokeh:`vec3 scene(vec2 uv,vec2 p){
         float t=u_time*0.4; float ar=u_res.x/u_res.y;
@@ -272,46 +266,65 @@
         col+=u_treble*0.2*smoothstep(0.7,0.9,pat);
         col*=smoothstep(0.98,0.15,r);
         return col*(0.85+u_level*0.5);}`,
-      // neon city skyline (Still Not My City)
+      // rainy neon skyline, parallax layers (Still Not My City)
       city:`vec3 scene(vec2 uv,vec2 p){
         float t=u_time;
-        float ci=floor(uv.x*14.0);
-        float bh=0.25+0.5*h1(ci*1.7);
-        vec3 col=mix(u_colB*1.3,u_colB*0.35,uv.y);
-        if(uv.y<bh){
-          vec2 w=floor(vec2(uv.x*14.0,uv.y*40.0));
-          float lit=step(0.6,h1(w.x*3.1+w.y*7.3));
-          float flick=lit*(0.6+0.4*sin(t*3.0+w.y+w.x+u_bass*5.0));
-          float win=step(0.2,fract(uv.x*14.0))*step(fract(uv.x*14.0),0.8)*step(0.2,fract(uv.y*40.0))*step(fract(uv.y*40.0),0.8);
-          col=u_colB*0.15;
-          col+=u_colA*flick*win*(0.8+u_treble*1.2);
+        vec3 col=mix(u_colB*1.5,u_colB*0.22,uv.y);
+        col+=step(0.996,hash(floor(p*180.0)))*smoothstep(0.45,1.0,uv.y)*0.6;
+        for(int Lr=0;Lr<3;Lr++){ float fl=float(Lr);
+          float scale=7.0+fl*6.0;
+          float xx=uv.x*scale + t*(0.02+fl*0.04);
+          float ci=floor(xx);
+          float bh=(0.16+0.26*h1(ci*1.7+fl*11.0))*(0.7+fl*0.30);
+          if(uv.y<bh){
+            col=u_colB*(0.30-fl*0.08);
+            vec2 w=floor(vec2(xx*4.0,uv.y*42.0));
+            float lit=step(0.64,h1(w.x*3.1+w.y*7.3+fl*9.0));
+            float flick=lit*(0.5+0.5*sin(t*2.0+w.x*1.3+w.y+u_bass*4.0));
+            float win=step(0.25,fract(xx*4.0))*step(fract(xx*4.0),0.75)*step(0.2,fract(uv.y*42.0))*step(fract(uv.y*42.0),0.8);
+            col+=u_colA*flick*win*(0.8+u_treble)*(1.0-fl*0.2);
+          }
         }
-        return col*(0.85+u_level*0.4);}`,
-      // desert dunes + sun (The Army of Anubis)
+        float rain=smoothstep(0.55,1.0,hash(vec2(floor(p.x*110.0),floor(p.y*7.0 - t*6.0))));
+        col+=rain*u_treble*0.12;
+        return col*(0.9+u_level*0.4);}`,
+      // pyramid + all-seeing sun under stars (The Army of Anubis)
       desert:`vec3 scene(vec2 uv,vec2 p){
-        float t=u_time*0.2;
-        vec3 col=mix(u_colB*1.3,u_colB*0.5,uv.y);
-        float sun=smoothstep(0.16,0.0,length((uv-vec2(0.5,0.64))*vec2(1.0,1.25)));
-        col=mix(col,u_colA,sun*(0.85+u_bass*0.6));
-        for(int i=0;i<4;i++){ float fi=float(i);
-          float dune=0.46-fi*0.10+0.045*sin(uv.x*(2.5+fi)+fi*1.7+t)+0.025*fbm(vec2(uv.x*5.0,fi*3.0));
-          float m=step(uv.y,dune);
-          col=mix(col,u_colB*(0.55-fi*0.11),m);
-        }
-        col+=u_treble*0.1*sun;
-        return col*(0.85+u_level*0.4);}`,
-      // rolling ocean waves (Beach Break)
+        float t=u_time*0.3; float ar=u_res.x/u_res.y;
+        vec3 col=mix(u_colB*0.9,u_colB*0.22,uv.y);
+        col+=step(0.994,hash(floor(p*150.0)))*smoothstep(0.35,1.0,uv.y)*0.6;
+        vec2 sc=(uv-vec2(0.5,0.66))*vec2(ar,1.0); float sd=length(sc);
+        float ang=atan(sc.y,sc.x);
+        float rays=0.5+0.5*sin(ang*18.0+t*2.0);
+        col+=u_colA*smoothstep(0.55,0.0,sd)*(0.35+rays*0.35)*(0.6+u_bass*0.8);
+        col+=u_colA*smoothstep(0.13,0.09,sd)*(1.2+u_bass*1.4);
+        float apex=0.46; vec2 pc=vec2(uv.x-0.5,uv.y);
+        float w=(apex-uv.y)*0.95;
+        float pyr=step(abs(pc.x),w)*step(uv.y,apex);
+        col=mix(col,u_colB*0.12,pyr);
+        col+=smoothstep(0.012,0.0,abs(abs(pc.x)-w))*step(uv.y,apex)*step(0.05,uv.y)*u_colA*(0.5+u_treble);
+        float sand=smoothstep(0.0,0.10,0.10-uv.y);
+        col=mix(col,u_colB*0.45,sand);
+        return col*(0.9+u_level*0.4);}`,
+      // sun glittering on the sea (Beach Break)
       waves:`vec3 scene(vec2 uv,vec2 p){
-        float t=u_time*0.5;
-        vec3 col=mix(u_colA*0.8,u_colB,uv.y);
-        for(int i=0;i<6;i++){ float fi=float(i);
-          float wave=0.72-fi*0.12+0.03*sin(uv.x*6.0+t*(1.0+fi*0.2)+fi)+0.02*fbm(vec2(uv.x*8.0+t,fi));
-          float m=step(uv.y,wave);
-          float foam=smoothstep(0.012,0.0,abs(uv.y-wave));
-          col=mix(col,mix(u_colB,u_colA,fi/6.0),m);
-          col+=foam*(0.5+u_treble*1.2)*mix(u_colA,vec3(1.0),0.4);
+        float t=u_time; float ar=u_res.x/u_res.y; float hz=0.55;
+        vec3 col;
+        if(uv.y>hz){
+          float sky=(uv.y-hz)/(1.0-hz);
+          col=mix(u_colA,u_colB,sky*0.8);
+          float sun=smoothstep(0.12,0.0,length((uv-vec2(0.5,hz+0.12))*vec2(ar,1.0)));
+          col=mix(col,u_colA*1.4,sun*(0.8+u_bass*0.6));
+        } else {
+          float sea=(hz-uv.y)/hz;
+          col=mix(u_colA*0.7,u_colB,sea);
+          float spread=0.03+(hz-uv.y)*0.45;
+          float colmn=smoothstep(spread,0.0,abs(uv.x-0.5));
+          float ripple=sin(uv.y*60.0-t*4.0)*0.5+0.5;
+          col+=smoothstep(0.5,1.0,ripple)*colmn*(0.5+u_treble*1.2)*u_colA;
+          col+=fbm(vec2(uv.x*6.0,(hz-uv.y)*20.0+t))*0.08*u_colA;
         }
-        return col*(0.85+u_level*0.5);}`,
+        return col*(0.9+u_level*0.4);}`,
     };
     const geo=new THREE.PlaneGeometry(2,2);
     function makeLayer(){const u=mkU();
