@@ -129,32 +129,38 @@
   const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
 
   // ---------- WebGL stage with swappable per-song scenes ----------
-  let setScene=()=>{}, paletteFor=()=>{};
+  let stageShow=()=>{};
   try{
     if(typeof THREE==='undefined') throw new Error('three.js not loaded');
     const canvas=document.getElementById('stage');
     const renderer=new THREE.WebGLRenderer({canvas,antialias:true});
     renderer.setPixelRatio(Math.min(devicePixelRatio,2));
     const sc=new THREE.Scene(), cam=new THREE.Camera();
-    const uniforms={
+    // shared uniforms (referenced by both crossfade layers)
+    const shared={
       u_time:{value:0}, u_res:{value:new THREE.Vector2()},
-      u_bass:{value:0}, u_treble:{value:0}, u_level:{value:0},
-      u_seed:{value:0}, u_bright:{value:0}, u_dyn:{value:0},
-      u_colA:{value:new THREE.Color(0xf0b15f)}, u_colB:{value:new THREE.Color(0x2a2138)},
+      u_bass:{value:0}, u_treble:{value:0}, u_level:{value:0}, u_punch:{value:0},
     };
+    const mkU=()=>Object.assign({},shared,{
+      u_colA:{value:new THREE.Color(0xf0b15f)}, u_colB:{value:new THREE.Color(0x2a2138)},
+      u_seed:{value:0}, u_bright:{value:0}, u_dyn:{value:0}, u_alpha:{value:1},
+    });
     const VERT=`varying vec2 vUv;void main(){vUv=uv;gl_Position=vec4(position.xy,0.0,1.0);}`;
     const HEAD=`precision highp float;varying vec2 vUv;
-      uniform float u_time,u_bass,u_treble,u_level,u_seed,u_bright,u_dyn;
+      uniform float u_time,u_bass,u_treble,u_level,u_seed,u_bright,u_dyn,u_punch,u_alpha;
       uniform vec2 u_res; uniform vec3 u_colA,u_colB;
       float hash(vec2 p){p=fract(p*vec2(123.34,345.45));p+=dot(p,p+34.345);return fract(p.x*p.y);}
       float h1(float n){return fract(sin(n*78.233+u_seed)*43758.5453);}
       float noise(vec2 p){vec2 i=floor(p),f=fract(p);float a=hash(i),b=hash(i+vec2(1,0)),c=hash(i+vec2(0,1)),d=hash(i+vec2(1,1));vec2 u=f*f*(3.-2.*f);return mix(a,b,u.x)+(c-a)*u.y*(1.-u.x)+(d-b)*u.x*u.y;}
       float fbm(vec2 p){float v=0.,a=.5;for(int i=0;i<6;i++){v+=a*noise(p);p*=2.02;a*=.5;}return v;}
       mat2 rot(float a){float c=cos(a),s=sin(a);return mat2(c,-s,s,c);}`;
-    const MAIN=`void main(){vec2 uv=vUv;vec2 p=uv;p.x*=u_res.x/u_res.y;
+    const MAIN=`void main(){vec2 uv=vUv;
+      uv=(uv-0.5)*(1.0-u_punch*0.10)+0.5;
+      vec2 p=uv;p.x*=u_res.x/u_res.y;
       vec3 col=scene(uv,p);
+      col*=1.0+u_punch*0.22;
       vec2 cc=uv-0.5; col*=1.0-dot(cc,cc)*(0.92-u_bass*0.32);
-      col=max(col,0.0); gl_FragColor=vec4(col,1.0);}`;
+      col=max(col,0.0); gl_FragColor=vec4(col,u_alpha);}`;
 
     const SCENES={
       // liquid domain-warp (default)
@@ -307,29 +313,39 @@
         }
         return col*(0.85+u_level*0.5);}`,
     };
-    const matCache={};
-    function mat(name){ name=SCENES[name]?name:'default';
-      if(!matCache[name]) matCache[name]=new THREE.ShaderMaterial({uniforms,vertexShader:VERT,fragmentShader:HEAD+SCENES[name]+MAIN});
-      return matCache[name]; }
-    const mesh=new THREE.Mesh(new THREE.PlaneGeometry(2,2),mat('default')); sc.add(mesh);
-
-    // expose: switch scene + set palette from a track
-    setScene=(name)=>{ mesh.material=mat(name); };
-    paletteFor=(tr)=>{
-      const i=NOTE[tr.key];
+    const geo=new THREE.PlaneGeometry(2,2);
+    function makeLayer(){const u=mkU();
+      const mesh=new THREE.Mesh(geo,new THREE.ShaderMaterial({uniforms:u,vertexShader:VERT,fragmentShader:HEAD+SCENES.default+MAIN,transparent:true,depthTest:false,depthWrite:false}));
+      mesh.frustumCulled=false; mesh.visible=false; sc.add(mesh); return {u,mesh,scene:'default'};}
+    const L=[makeLayer(),makeLayer()]; let front=0, fade=null, firstShow=true;
+    L[0].mesh.visible=true;
+    function setLayerScene(layer,name){ name=SCENES[name]?name:'default';
+      if(layer.scene!==name){ layer.mesh.material=new THREE.ShaderMaterial({uniforms:layer.u,vertexShader:VERT,fragmentShader:HEAD+SCENES[name]+MAIN,transparent:true,depthTest:false,depthWrite:false}); layer.scene=name; } }
+    function applyPalette(u,tr){ const i=NOTE[tr.key];
       const hue=tr.mode==="major" ? (24+i*(54/11)) : (250+i*(95/11));
       const sat=clamp(0.46+(tr.bright-700)/900*0.4,0.46,0.9);
       const deep=((tr.mode==="minor"?hue+18:hue+200)%360)/360;
-      uniforms.u_colA.value.setHSL(((hue%360)+360)%360/360, sat, 0.58);
-      uniforms.u_colB.value.setHSL(deep, 0.42, 0.10);
-      uniforms.u_seed.value=(i*1.7+(tr.mode==="minor"?3.3:0.0))%10;
-      uniforms.u_bright.value=clamp((tr.bright-700)/900,0,1);
-      uniforms.u_dyn.value=clamp((tr.dyn-4)/13,0,1);
+      u.u_colA.value.setHSL((((hue%360)+360)%360)/360, sat, 0.58);
+      u.u_colB.value.setHSL(deep, 0.42, 0.10);
+      u.u_seed.value=(i*1.7+(tr.mode==="minor"?3.3:0.0))%10;
+      u.u_bright.value=clamp((tr.bright-700)/900,0,1);
+      u.u_dyn.value=clamp((tr.dyn-4)/13,0,1);
+    }
+    // expose: crossfade to a new track's scene + palette
+    stageShow=(tr)=>{
+      if(firstShow){ const c=L[front]; setLayerScene(c,tr.scene); applyPalette(c.u,tr);
+        c.u.u_alpha.value=1; c.mesh.visible=true; c.mesh.renderOrder=1; firstShow=false; return; }
+      const cur=L[front], nxt=L[1-front];
+      setLayerScene(nxt,tr.scene); applyPalette(nxt.u,tr);
+      nxt.u.u_alpha.value=0; nxt.mesh.visible=true; nxt.mesh.renderOrder=1;
+      cur.u.u_alpha.value=1; cur.mesh.visible=true; cur.mesh.renderOrder=0;
+      front=1-front; fade={t0:performance.now(),dur:1100,out:cur,in:nxt};
     };
 
     let lw=0,lh=0;
     function fit(){const w=Math.max(canvas.clientWidth,innerWidth,320),h=Math.max(canvas.clientHeight,innerHeight,320);
-      if(w===lw&&h===lh)return; lw=w;lh=h; renderer.setSize(w,h,false); uniforms.u_res.value.set(canvas.width||w,canvas.height||h);}
+      if(w===lw&&h===lh)return; lw=w;lh=h; renderer.setSize(w,h,false); shared.u_res.value.set(canvas.width||w,canvas.height||h);}
+    let A_punch=0;
     function levels(){
       if(analyserRef&&freqData){
         analyserRef.getByteFrequencyData(freqData);
@@ -337,13 +353,16 @@
         let tr=0;for(let i=80;i<200;i++)tr+=freqData[i];tr/=(120*255);
         let l=0;for(let i=1;i<200;i++)l+=freqData[i];l/=(199*255);
         A_bass+=(b-A_bass)*0.18; A_treb+=(tr-A_treb)*0.18; A_level+=(l-A_level)*0.12;
-      } else { A_bass*=0.94; A_treb*=0.94; A_level*=0.94; }
+        A_punch = b>A_punch ? b : A_punch*0.86;   // fast attack, slow release
+      } else { A_bass*=0.94; A_treb*=0.94; A_level*=0.94; A_punch*=0.86; }
     }
     addEventListener('resize',fit);
     let phase=0,last=performance.now();
     (function loop(){const now=performance.now();const dt=Math.min((now-last)/1000,0.05);last=now;
       fit();levels(); phase+=dt*(0.05+A_level*0.08);
-      uniforms.u_time.value=phase; uniforms.u_bass.value=A_bass; uniforms.u_treble.value=A_treb; uniforms.u_level.value=A_level;
+      shared.u_time.value=phase; shared.u_bass.value=A_bass; shared.u_treble.value=A_treb; shared.u_level.value=A_level; shared.u_punch.value=A_punch;
+      if(fade){ const f=Math.min((now-fade.t0)/fade.dur,1); fade.in.u.u_alpha.value=f;
+        if(f>=1){ fade.out.mesh.visible=false; fade=null; } }
       renderer.render(sc,cam); requestAnimationFrame(loop);})();
   }catch(e){
     console.warn('stage disabled:',e.message);
@@ -369,11 +388,32 @@
     songsEl.appendChild(row); tr._row=row;
   });
 
+  // generated lock-screen / tab artwork from a song's palette
+  const artCache={};
+  function songArt(tr){ if(artCache[tr.slug])return artCache[tr.slug];
+    const i=NOTE[tr.key];
+    const hue=(((tr.mode==="major"?(24+i*(54/11)):(250+i*(95/11)))%360)+360)%360;
+    const sat=Math.round(clamp(0.46+(tr.bright-700)/900*0.4,0.46,0.9)*100);
+    const deep=((tr.mode==="minor"?hue+18:hue+200)%360);
+    const c=document.createElement('canvas'); c.width=c.height=512; const x=c.getContext('2d');
+    x.fillStyle=`hsl(${Math.round(deep)},32%,12%)`; x.fillRect(0,0,512,512);
+    x.globalCompositeOperation='lighter';
+    let s=0; for(const ch of tr.slug)s=(s*31+ch.charCodeAt(0))%9973; const rnd=()=>{s=(s*9301+49297)%233280;return s/233280;};
+    for(let k=0;k<6;k++){ const px=rnd()*512,py=rnd()*512,r=(0.25+rnd()*0.5)*512;
+      const hh=(hue+rnd()*50-25+360)%360; const g=x.createRadialGradient(px,py,0,px,py,r);
+      g.addColorStop(0,`hsla(${hh},${sat}%,60%,0.6)`); g.addColorStop(1,`hsla(${hh},${sat}%,60%,0)`);
+      x.fillStyle=g; x.beginPath(); x.arc(px,py,r,0,7); x.fill(); }
+    return artCache[tr.slug]=c.toDataURL('image/png');
+  }
+  function media(tr){ document.title=tr.title+' — Goodwill Impairment';
+    if(!('mediaSession'in navigator))return;
+    try{ navigator.mediaSession.metadata=new MediaMetadata({title:tr.title,artist:'Goodwill Impairment',album:'Goodwill Impairment',artwork:[{src:songArt(tr),sizes:'512x512',type:'image/png'}]}); }catch(e){}
+  }
   function load(i){
     idx=(i+TRACKS.length)%TRACKS.length; const tr=TRACKS[idx];
     TRACKS.forEach(x=>x._row.classList.remove('active')); tr._row.classList.add('active');
     tnow.textContent=tr.title; nowtitle.textContent=tr.title;
-    paletteFor(tr); setScene(tr.scene);
+    stageShow(tr); media(tr);
     audio.src=encodeURI('audio/'+tr.slug+'.mp3'); cur.textContent='0:00'; fill.style.width='0%'; tot.textContent='–:–';
   }
   // Web Audio mutes file:// media; only enable analyser over http(s).
@@ -386,10 +426,13 @@
       freqData=new Uint8Array(an.frequencyBinCount); analyserRef=an;
     }catch(e){console.warn('audio-reactive disabled:',e.message);}
   }
+  const ms=('mediaSession'in navigator)?navigator.mediaSession:null;
   function play(){ initAudio(); if(actx&&actx.state==='suspended')actx.resume();
-    audio.play().then(()=>{playing=true;pp.textContent='⏸';document.body.classList.remove('paused');}).catch(()=>{}); }
-  function pause(){ audio.pause(); playing=false; pp.textContent='▶'; document.body.classList.add('paused'); }
+    audio.play().then(()=>{playing=true;pp.textContent='⏸';document.body.classList.remove('paused');if(ms)ms.playbackState='playing';}).catch(()=>{}); }
+  function pause(){ audio.pause(); playing=false; pp.textContent='▶'; document.body.classList.add('paused'); if(ms)ms.playbackState='paused'; }
   function next(){ load(idx+1); play(); } function prev(){ load(idx-1); play(); }
+  if(ms){ ms.setActionHandler('play',play); ms.setActionHandler('pause',pause);
+    ms.setActionHandler('previoustrack',prev); ms.setActionHandler('nexttrack',next); }
 
   audio.addEventListener('timeupdate',()=>{if(audio.duration){fill.style.width=(audio.currentTime/audio.duration*100)+'%';cur.textContent=fmt(audio.currentTime);}});
   audio.addEventListener('loadedmetadata',()=>{tot.textContent=fmt(audio.duration);});
