@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Goodwill Impairment</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,200;0,9..144,300;0,9..144,400;1,9..144,300&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500&display=swap" rel="stylesheet" />
+<style>
+  :root{
+    --cream:#f3e6cf; --ink:#3a2a32; --ink-soft:#6a5460;
+    --coral:#d96f4f; --player-h:84px;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{font-family:'DM Sans',system-ui,sans-serif;color:var(--ink);background:var(--cream);
+    line-height:1.65;-webkit-font-smoothing:antialiased;padding-bottom:var(--player-h);overflow-x:hidden;}
+  /* film grain */
+  body::after{content:"";position:fixed;inset:0;z-index:9999;pointer-events:none;opacity:.07;mix-blend-mode:multiply;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");}
+  .display{font-family:'Fraunces',serif;letter-spacing:-0.01em;}
+
+  /* NAV */
+  nav{position:fixed;top:0;left:0;right:0;z-index:60;display:flex;justify-content:space-between;align-items:center;
+    padding:24px clamp(20px,5vw,56px);mix-blend-mode:difference;}
+  nav .brand{font-family:'Fraunces';font-weight:300;font-size:16px;letter-spacing:.04em;color:#fff;}
+  nav .links{display:flex;gap:26px;}
+  nav a{color:#fff;text-decoration:none;font-size:13px;letter-spacing:.08em;text-transform:lowercase;opacity:.9;}
+
+  /* HERO — animated art */
+  .hero{position:relative;height:100vh;overflow:hidden;
+    background:radial-gradient(130% 100% at 60% 5%, #f3b063 0%, #e1815f 32%, #c9697a 55%, #6a4f6e 78%, #2a2138 100%);}
+  #art{position:absolute;inset:0;width:100%;height:100%;display:block;}
+  .hero h1{position:absolute;left:0;right:0;bottom:13vh;z-index:5;text-align:center;
+    font-family:'Fraunces';font-weight:200;font-style:italic;color:#fdf3e6;
+    font-size:clamp(40px,11.5vw,168px);line-height:.9;letter-spacing:-0.02em;
+    mix-blend-mode:overlay;pointer-events:none;}
+  .hero h1 b{display:block;font-style:normal;font-weight:200;letter-spacing:.01em;}
+  .scrollcue{position:absolute;bottom:28px;left:50%;transform:translateX(-50%);z-index:5;
+    width:1px;height:46px;background:linear-gradient(#fff,transparent);opacity:.6;}
+
+  /* LISTEN */
+  section.block{padding:clamp(56px,11vh,120px) clamp(20px,5vw,56px);max-width:1080px;margin:0 auto;}
+  .label{font-family:'Fraunces';font-style:italic;font-weight:300;font-size:clamp(26px,5vw,46px);color:var(--ink);margin-bottom:38px;}
+  .tracks{display:flex;flex-direction:column;}
+  .track{display:grid;grid-template-columns:48px 1fr auto;align-items:center;gap:20px;
+    padding:14px 14px;border-top:1px solid rgba(58,42,50,.13);cursor:pointer;border-radius:12px;
+    transition:background .35s,padding-left .35s;}
+  .track:last-child{border-bottom:1px solid rgba(58,42,50,.13);}
+  .track:hover{background:rgba(217,111,79,.09);padding-left:22px;}
+  .track.active{background:rgba(217,111,79,.14);}
+  .track .cover{width:48px;height:48px;border-radius:9px;}
+  .track .t-title{font-family:'Fraunces';font-weight:300;font-size:20px;}
+  .track .dur{font-size:13px;color:var(--ink-soft);font-variant-numeric:tabular-nums;}
+
+  /* GALLERY (story as art, almost no text) */
+  .gallery{display:grid;grid-template-columns:repeat(12,1fr);gap:16px;}
+  .tile{position:relative;border-radius:14px;overflow:hidden;min-height:180px;
+    box-shadow:0 18px 44px -26px rgba(60,40,55,.7);transition:transform .5s;}
+  .tile:hover{transform:translateY(-5px) scale(1.005);}
+  .tile canvas{position:absolute;inset:0;width:100%;height:100%;}
+  .tile .cap{position:absolute;left:18px;bottom:16px;z-index:2;color:#fdf3e6;mix-blend-mode:overlay;}
+  .tile .cap .d{font-size:11px;letter-spacing:.18em;text-transform:uppercase;opacity:.85;}
+  .tile .cap .h{font-family:'Fraunces';font-style:italic;font-weight:300;font-size:22px;}
+  .t-a{grid-column:span 7;min-height:300px;}
+  .t-b{grid-column:span 5;min-height:300px;}
+  .t-c{grid-column:span 4;}
+  .t-d{grid-column:span 4;}
+  .t-e{grid-column:span 4;}
+  @media(max-width:680px){.t-a,.t-b,.t-c,.t-d,.t-e{grid-column:span 12;}}
+
+  /* FOOTER */
+  footer{padding:90px clamp(20px,5vw,56px) 60px;text-align:center;}
+  footer .social{display:flex;gap:24px;justify-content:center;flex-wrap:wrap;}
+  footer .social a{color:var(--ink);text-decoration:none;font-size:13px;letter-spacing:.1em;text-transform:lowercase;
+    border-bottom:1px solid rgba(58,42,50,.3);padding-bottom:3px;transition:color .3s,border-color .3s;}
+  footer .social a:hover{color:var(--coral);border-color:var(--coral);}
+
+  /* PLAYER */
+  .player{position:fixed;left:0;right:0;bottom:0;z-index:100;height:var(--player-h);
+    display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:20px;padding:0 clamp(16px,4vw,40px);
+    background:rgba(42,33,40,.92);backdrop-filter:blur(14px);color:#fdeedd;border-top:1px solid rgba(255,246,234,.12);}
+  .player .now{display:flex;align-items:center;gap:13px;min-width:0;}
+  .player .cover{width:48px;height:48px;border-radius:9px;flex:none;}
+  .player .np-title{font-family:'Fraunces';font-weight:300;font-size:16px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .player .np-sub{font-size:12px;opacity:.55;}
+  .player .controls{display:flex;align-items:center;gap:22px;}
+  .player .controls button{background:none;border:none;color:#fdeedd;cursor:pointer;font-size:17px;opacity:.8;display:flex;}
+  .player .controls .pp{width:46px;height:46px;border-radius:50%;background:#fdeedd;color:var(--ink);
+    align-items:center;justify-content:center;font-size:17px;opacity:1;}
+  .player .bar-wrap{display:flex;align-items:center;gap:12px;justify-self:end;width:100%;max-width:340px;}
+  .player .time{font-size:11.5px;opacity:.6;font-variant-numeric:tabular-nums;width:34px;}
+  .player .progress{flex:1;height:4px;border-radius:4px;background:rgba(255,246,234,.2);cursor:pointer;position:relative;}
+  .player .fill{position:absolute;left:0;top:0;bottom:0;width:0%;border-radius:4px;background:linear-gradient(90deg,#f0b15f,var(--coral));}
+  @media(max-width:680px){.player{grid-template-columns:1fr auto;}.player .bar-wrap{display:none;}nav .links{display:none;}}
+  .reveal{opacity:0;transform:translateY(22px);transition:opacity 1s,transform 1s;}
+  .reveal.in{opacity:1;transform:none;}
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="brand">Goodwill Impairment</div>
+  <div class="links"><a href="#listen">listen</a><a href="#elsewhere">elsewhere</a></div>
+</nav>
+
+<header class="hero">
+  <canvas id="art"></canvas>
+  <h1 class="display">Goodwill<b>Impairment</b></h1>
+  <div class="scrollcue"></div>
+</header>
+
+<section class="block reveal" id="listen">
+  <div class="label display">listen</div>
+  <div class="tracks" id="tracklist"></div>
+</section>
+
+<footer id="elsewhere" class="reveal">
+  <div class="social">
+    <a href="#">spotify</a><a href="#">apple music</a><a href="#">bandcamp</a><a href="#">instagram</a><a href="#">youtube</a>
+  </div>
+</footer>
+
+<div class="player">
+  <div class="now"><canvas class="cover" id="np-cover"></canvas>
+    <div class="txt"><div class="np-title" id="np-title">Slow Tide</div><div class="np-sub" id="np-sub">Goodwill Impairment</div></div></div>
+  <div class="controls"><button id="prev">⏮</button><button class="pp" id="pp">▶</button><button id="next">⏭</button></div>
+  <div class="bar-wrap"><span class="time" id="cur">0:00</span><div class="progress" id="progress"><div class="fill" id="fill"></div></div><span class="time" id="tot">3:42</span></div>
+</div>
+
+<script src="three.min.js"></script>
+<script>
+  // shared audio-reactive state — filled by the player on first play,
+  // read by the shader loop. Smoothed values, decay to calm when paused.
+  let analyserRef=null, freqData=null, A_bass=0, A_treb=0, A_level=0;
+
+  // ---------- animated art hero: GLSL shader (domain-warped fbm) ----------
+  // isolated: if Three.js/WebGL is unavailable the hero falls back to a CSS
+  // gradient and the rest of the page (music!) keeps working.
+  try{
+  (function(){
+    if(typeof THREE==='undefined') throw new Error('three.js not loaded');
+    const canvas=document.getElementById('art');
+    const renderer=new THREE.WebGLRenderer({canvas,antialias:true});
+    renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+    const scene=new THREE.Scene();
+    const camera=new THREE.Camera();
+    const uniforms={u_time:{value:0},u_res:{value:new THREE.Vector2()},
+      u_bass:{value:0},u_treble:{value:0},u_level:{value:0}};
+    const frag=`
+      precision highp float;
+      varying vec2 vUv; uniform float u_time; uniform vec2 u_res;
+      uniform float u_bass, u_treble, u_level;
+      float hash(vec2 p){p=fract(p*vec2(123.34,345.45));p+=dot(p,p+34.345);return fract(p.x*p.y);}
+      float noise(vec2 p){vec2 i=floor(p),f=fract(p);float a=hash(i),b=hash(i+vec2(1.,0.)),c=hash(i+vec2(0.,1.)),d=hash(i+vec2(1.,1.));vec2 u=f*f*(3.-2.*f);return mix(a,b,u.x)+(c-a)*u.y*(1.-u.x)+(d-b)*u.x*u.y;}
+      float fbm(vec2 p){float v=0.,a=0.5;for(int i=0;i<6;i++){v+=a*noise(p);p*=2.02;a*=0.5;}return v;}
+      vec3 pal(float t){return vec3(0.5)+vec3(0.5)*cos(6.28318*(vec3(1.0)*t+vec3(0.0,0.12,0.24)));}
+      void main(){
+        vec2 uv=vUv; uv.x*=u_res.x/u_res.y;
+        float t=u_time;
+        float warp=4.0+u_bass*2.6;                       // bass deepens the fold
+        vec2 q=vec2(fbm(uv*1.6+vec2(0.,t)),fbm(uv*1.6+vec2(5.2,1.3)+t*0.8));
+        vec2 r=vec2(fbm(uv*1.6+warp*q+vec2(1.7,9.2)+t*1.1),fbm(uv*1.6+warp*q+vec2(8.3,2.8)-t*0.9));
+        float f=fbm(uv*1.6+warp*r);
+        vec3 col=pal(f*0.6+length(r)*0.35+t*0.1);
+        col=mix(col,vec3(0.96,0.55,0.24),clamp(f*f,0.,1.)*(0.45+u_bass*0.45)); // bass blooms warm
+        col=mix(vec3(0.12,0.08,0.17),col,smoothstep(0.0,0.95,f+0.28));
+        col+=u_treble*0.16*vec3(1.0,0.86,0.7)*noise(uv*42.0+t*4.0);          // treble shimmer
+        col*=0.92+u_level*0.5;                                                // loudness lifts it
+        vec2 cc=vUv-0.5; col*=1.0-dot(cc,cc)*(0.85-u_bass*0.28);              // bass opens vignette
+        gl_FragColor=vec4(col,1.0);
+      }`;
+    const mat=new THREE.ShaderMaterial({uniforms,fragmentShader:frag,
+      vertexShader:`varying vec2 vUv;void main(){vUv=uv;gl_Position=vec4(position.xy,0.0,1.0);}`});
+    scene.add(new THREE.Mesh(new THREE.PlaneGeometry(2,2),mat));
+    let lw=0,lh=0;
+    function fit(){
+      const w=Math.max(canvas.clientWidth,innerWidth,320), h=Math.max(canvas.clientHeight,innerHeight,320);
+      if(w===lw&&h===lh)return; lw=w;lh=h;
+      renderer.setSize(w,h,false);
+      uniforms.u_res.value.set(canvas.width||w,canvas.height||h);
+    }
+    addEventListener('resize',fit);
+    function levels(){
+      if(analyserRef&&freqData){
+        analyserRef.getByteFrequencyData(freqData);
+        let b=0;for(let i=1;i<8;i++)b+=freqData[i];b/=(7*255);
+        let tr=0;for(let i=80;i<200;i++)tr+=freqData[i];tr/=(120*255);
+        let l=0;for(let i=1;i<200;i++)l+=freqData[i];l/=(199*255);
+        A_bass+=(b-A_bass)*0.18; A_treb+=(tr-A_treb)*0.18; A_level+=(l-A_level)*0.12;
+      } else { A_bass*=0.94; A_treb*=0.94; A_level*=0.94; }
+    }
+    let phase=0,last=performance.now();
+    (function loop(){
+      const now=performance.now(); const dt=Math.min((now-last)/1000,0.05); last=now;
+      fit(); levels();
+      phase+=dt*(0.045+A_level*0.07);
+      uniforms.u_time.value=phase;
+      uniforms.u_bass.value=A_bass; uniforms.u_treble.value=A_treb; uniforms.u_level.value=A_level;
+      renderer.render(scene,camera); requestAnimationFrame(loop);
+    })();
+  })();
+  }catch(e){console.warn('hero shader disabled:',e.message);
+    const a=document.getElementById('art');if(a)a.style.display='none';}
+
+  // ---------- the catalogue: real fingerprints from librosa analysis ----------
+  // bright = spectral centroid Hz, dyn = dynamic range dB
+  const TRACKS=[
+    {slug:"losing-control",   title:"Losing Control",      key:"G#",mode:"minor",tempo:96, bright:1430,dyn:16.4},
+    {slug:"white-stairs",     title:"White Stairs",        key:"E", mode:"minor",tempo:152,bright:1167,dyn:10.7},
+    {slug:"our-song",         title:"Our Song",            key:"E", mode:"major",tempo:99, bright:1048,dyn:5.0},
+    {slug:"always",           title:"Always",              key:"F", mode:"major",tempo:152,bright:716, dyn:10.6},
+    {slug:"first-time-matters",title:"The First Time Matters",key:"G#",mode:"minor",tempo:89,bright:924,dyn:8.0},
+    {slug:"avril-lafish",     title:"Avril Lafish",        key:"G", mode:"major",tempo:152,bright:1241,dyn:5.8},
+    {slug:"eco",              title:"Eco",                 key:"F", mode:"major",tempo:112,bright:995, dyn:4.7},
+    {slug:"bossanova-sci-fi", title:"Bossanova Sci-Fi",    key:"D", mode:"minor",tempo:129,bright:1602,dyn:13.8},
+    {slug:"still-not-my-city",title:"Still Not My City",   key:"E", mode:"minor",tempo:112,bright:1425,dyn:11.5},
+    {slug:"army-of-anubis",   title:"The Army of Anubis",  key:"G", mode:"minor",tempo:96, bright:1311,dyn:7.6},
+    {slug:"beach-break",      title:"Beach Break",         key:"E", mode:"major",tempo:136,bright:1255,dyn:8.7},
+  ];
+
+  // ---------- generative cover art, derived from each song's fingerprint ----------
+  const NOTE={C:0,"C#":1,D:2,"D#":3,E:4,F:5,"F#":6,G:7,"G#":8,A:9,"A#":10,B:11};
+  const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+  // major keys glow warm (gold/coral); minor keys sink to dusk (violet/magenta)
+  function trackHue(tr){const i=NOTE[tr.key];
+    return tr.mode==="major" ? (24+i*(54/11)) : (250+i*(95/11));}
+  function paint(canvas,tr){
+    if(!canvas||!canvas.getContext)return;
+    const c=canvas.getContext('2d'),w=canvas.width=(canvas.offsetWidth||48)*2,h=canvas.height=(canvas.offsetHeight||48)*2;
+    const hue=trackHue(tr);
+    const sat=clamp(46+(tr.bright-700)/900*40,46,90);      // brightness -> saturation
+    const con=clamp((tr.dyn-4)/13,0,1);                    // dynamics  -> contrast
+    const blobs=Math.round(4+(tr.tempo-89)/63*4);          // tempo     -> density (4..8)
+    let s=0;for(const ch of tr.slug)s=(s*31+ch.charCodeAt(0))%233280;
+    const rnd=()=>{s=(s*9301+49297)%233280;return s/233280;};
+    c.fillStyle=`hsl(${((tr.mode==="minor"?hue+18:hue+200))%360},32%,${14+(1-con)*9}%)`;
+    c.fillRect(0,0,w,h);
+    c.globalCompositeOperation='lighter';
+    for(let i=0;i<blobs;i++){
+      const x=rnd()*w,y=rnd()*h,r=(0.24+rnd()*0.55)*Math.max(w,h);
+      const hh=((hue+rnd()*54-27)%360+360)%360;
+      const ll=46+rnd()*24*(0.6+con);
+      const g=c.createRadialGradient(x,y,0,x,y,r);
+      g.addColorStop(0,`hsla(${hh},${sat}%,${ll}%,${(0.42+con*0.28).toFixed(2)})`);
+      g.addColorStop(1,`hsla(${hh},${sat}%,${ll}%,0)`);
+      c.fillStyle=g;c.beginPath();c.arc(x,y,r,0,7);c.fill();
+    }
+  }
+  // ---------- build the track list ----------
+  const list=document.getElementById('tracklist');
+  TRACKS.forEach((tr,i)=>{
+    const row=document.createElement('div');row.className='track';
+    const cov=document.createElement('canvas');cov.className='cover';
+    const tt=document.createElement('div');tt.className='t-title display';tt.textContent=tr.title;
+    const du=document.createElement('div');du.className='dur';du.textContent='–:–';
+    row.append(cov,tt,du);list.appendChild(row);
+    paint(cov,tr);tr._row=row;tr._dur=du;
+    row.onclick=()=>{load(i);play();};
+  });
+
+  // ---------- player: real audio streaming ----------
+  const audio=new Audio();audio.preload='metadata';
+  let idx=0,playing=false;
+  const npT=document.getElementById('np-title'),npS=document.getElementById('np-sub'),npC=document.getElementById('np-cover');
+  const fill=document.getElementById('fill'),cur=document.getElementById('cur'),tot=document.getElementById('tot'),pp=document.getElementById('pp');
+  const fmt=s=>(isFinite(s)?Math.floor(s/60)+':'+String(Math.floor(s%60)).padStart(2,'0'):'–:–');
+  function load(i){
+    idx=(i+TRACKS.length)%TRACKS.length;const tr=TRACKS[idx];
+    TRACKS.forEach(x=>x._row.classList.remove('active'));tr._row.classList.add('active');
+    npT.textContent=tr.title;npS.textContent='Goodwill Impairment';
+    audio.src=encodeURI('audio/'+tr.slug+'.mp3');cur.textContent='0:00';fill.style.width='0%';tot.textContent='–:–';
+    paint(npC,tr);
+  }
+  // connect the audio element to a Web Audio analyser the shader can read.
+  // must happen on a user gesture; element source can only be made once.
+  let actx=null;
+  function initAudio(){
+    if(actx)return;
+    // browsers MUTE file:// audio once it's routed through Web Audio, so only
+    // enable the reactive analyser when served over http(s). Playback always works.
+    if(location.protocol==='file:')return;
+    try{
+      const AC=window.AudioContext||window.webkitAudioContext; if(!AC)return;
+      actx=new AC();
+      const src=actx.createMediaElementSource(audio);
+      const an=actx.createAnalyser(); an.fftSize=1024; an.smoothingTimeConstant=0.82;
+      src.connect(an); an.connect(actx.destination);
+      freqData=new Uint8Array(an.frequencyBinCount); analyserRef=an;
+    }catch(e){console.warn('audio-reactive disabled:',e.message);}
+  }
+  function play(){initAudio(); if(actx&&actx.state==='suspended')actx.resume();
+    audio.play().then(()=>{playing=true;pp.textContent='⏸';}).catch(()=>{});}
+  function pause(){audio.pause();playing=false;pp.textContent='▶';}
+  function next(){load(idx+1);play();}function prev(){load(idx-1);play();}
+  audio.addEventListener('timeupdate',()=>{if(audio.duration){fill.style.width=(audio.currentTime/audio.duration*100)+'%';cur.textContent=fmt(audio.currentTime);}});
+  audio.addEventListener('loadedmetadata',()=>{tot.textContent=fmt(audio.duration);if(TRACKS[idx]._dur)TRACKS[idx]._dur.textContent=fmt(audio.duration);});
+  audio.addEventListener('ended',next);
+  // preload durations into the list
+  TRACKS.forEach(tr=>{const a=new Audio();a.preload='metadata';a.src=encodeURI('audio/'+tr.slug+'.mp3');
+    a.addEventListener('loadedmetadata',()=>{tr._dur.textContent=fmt(a.duration);});});
+  pp.onclick=()=>playing?pause():play();
+  document.getElementById('next').onclick=next;document.getElementById('prev').onclick=prev;
+  document.getElementById('progress').onclick=e=>{if(!audio.duration)return;const r=e.currentTarget.getBoundingClientRect();
+    audio.currentTime=(e.clientX-r.left)/r.width*audio.duration;};
+  load(0);
+
+  const io=new IntersectionObserver(es=>es.forEach(e=>{if(e.isIntersecting)e.target.classList.add('in')}),{threshold:.1});
+  document.querySelectorAll('.reveal').forEach(el=>io.observe(el));
+</script>
+</body>
+</html>

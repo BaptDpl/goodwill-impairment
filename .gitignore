@@ -1,0 +1,9 @@
+# local tooling & source masters — not part of the live site
+Audio files/
+*.py
+*.bat
+__pycache__/
+
+# OS junk
+.DS_Store
+Thumbs.db
